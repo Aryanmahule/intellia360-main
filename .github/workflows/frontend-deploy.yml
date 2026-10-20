@@ -95,7 +95,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read
-      id-token: write
     env:
       BUCKET: ${{ vars.FRONTEND_S3_BUCKET }}
       DISTRIBUTION_ID: ${{ vars.FRONTEND_CLOUDFRONT_DISTRIBUTION_ID }}
@@ -110,10 +109,11 @@ jobs:
           name: frontend-out
           path: out
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Upload to S3
