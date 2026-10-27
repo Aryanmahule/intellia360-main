@@ -893,3 +893,147 @@
         height: 38px;
     }
 }
+/* Adaptive practice — what was adapted, per-question review, mastery change */
+
+.quiz-adaptation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 0 0 18px;
+    padding: 12px 16px;
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.quiz-adaptation strong {
+    font-weight: 800;
+}
+
+.quiz-adaptation-note {
+    flex-basis: 100%;
+    color: #475569;
+    font-size: 12px;
+}
+
+.question-difficulty {
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+.result-section {
+    margin: 0 0 22px;
+    padding: 16px 18px;
+    border: 1px solid #e6eaf1;
+    border-radius: 16px;
+    background: #fafbfc;
+    text-align: left;
+}
+
+.result-section h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #172033;
+}
+
+.result-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.result-review-item {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid #e6eaf1;
+    background: #ffffff;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #334155;
+}
+
+.result-review-item.is-correct {
+    border-left: 4px solid #10b981;
+}
+
+.result-review-item.is-wrong {
+    border-left: 4px solid #ef4444;
+}
+
+.result-review-item strong {
+    display: block;
+    color: #172033;
+}
+
+.result-mastery-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: #334155;
+}
+
+.result-mastery-item span:last-child {
+    font-weight: 800;
+    color: #172033;
+    white-space: nowrap;
+}
+
+.result-progress-link {
+    display: inline-block;
+    margin-top: 12px;
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.result-progress-link:hover {
+    text-decoration: underline;
+}
+
+.result-next-step p {
+    margin: 0 0 12px;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.result-next-step a,
+.result-next-step button {
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.result-next-step a:focus-visible,
+.result-next-step button:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+.result-replayed {
+    margin: -18px 0 22px;
+    color: #64748b;
+    font-size: 12px;
+}

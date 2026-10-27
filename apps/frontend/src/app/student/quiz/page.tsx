@@ -138,6 +138,21 @@ export default function StudentQuizIndexPage() {
 
         {!loading && !error && quizzes.length > 0 && (
           <div className="student-quizzes-grid">
+            <Link href="/student/quiz/adaptive" className="student-quiz-card">
+              <div className="student-quiz-card-top">
+                <div>
+                  <p className="student-quiz-card-chapter">Personalised</p>
+                  <h2 className="student-quiz-card-title">Smart practice</h2>
+                </div>
+                <span className="student-quiz-badge is-new">For you</span>
+              </div>
+              <p className="student-quiz-card-meta">
+                <span>5 questions</span>
+                <span>Topics and level picked from your answers</span>
+              </p>
+              <p className="student-quiz-card-cta">Start smart practice →</p>
+            </Link>
+
             {quizzes.map((quiz) => (
               <Link
                 key={quiz.quizId}

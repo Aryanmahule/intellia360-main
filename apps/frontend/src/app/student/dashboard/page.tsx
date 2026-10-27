@@ -5,6 +5,7 @@ import { useStudentContext } from "@/context/StudentContext";
 import HeroSectionContainer from "@/components/student/HeroSectionContainer";
 import type { DashboardHeroSlide } from "@intellia360/shared/types/student";
 import BottomNavigationContainer from "@/components/student/BottomNavigationContainer";
+import AdaptiveLearningPanel from "@/components/student/AdaptiveLearningPanel";
 import "./dashboard.css";
 
 function StatCard({
@@ -817,6 +818,9 @@ export default function StudentDashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* 3b. Adaptive learning path — mastery and personalised next steps */}
+      <AdaptiveLearningPanel />
 
       {/* 4. Most important area: Architecture / Video / EduNotes / Practice */}
       <section

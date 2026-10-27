@@ -280,25 +280,6 @@ export default function LoginPage() {
 
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-<<<<<<< HEAD:apps/frontend/src/app/(auth)/login/page.tsx
-  const handleGoogleCredential = useCallback(async (response: { credential: string }) => {
-    setGoogleLoading(true);
-    setError("");
-    signingInHere.current = true;
-    try {
-      const res = await apiFetch("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential: response.credential }),
-      });
-      const json = await res.json();
-      if (json.success && json.data) {
-        // Same path as a password sign-in: the session is recorded in
-        // AuthContext (so the console shows the real account, not a
-        // placeholder) and the role lands on its own dashboard.
-        completeLogin(json.data as AuthUser, readNextParam());
-      } else {
-=======
   const handleGoogleCredential = useCallback(
     async (response: { credential: string }) => {
       setGoogleLoading(true);
@@ -307,7 +288,9 @@ export default function LoginPage() {
       signingInHere.current = true;
 
       try {
-        const res = await fetch("/api/auth/google", {
+        // apiFetch: the API is a separate origin (NEXT_PUBLIC_API_URL) and the
+        // session cookie must be sent with the request.
+        const res = await apiFetch("/api/auth/google", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -320,13 +303,15 @@ export default function LoginPage() {
         const json = await res.json();
 
         if (json.success && json.data) {
+          // Same path as a password sign-in: the session is recorded in
+          // AuthContext (so the console shows the real account, not a
+          // placeholder) and the role lands on its own dashboard.
           completeLogin(json.data as AuthUser, readNextParam());
         } else {
           signingInHere.current = false;
           setError(json.message ?? "Google sign-in failed.");
         }
       } catch {
->>>>>>> 724391acf66bb382eaa3e5436343993626871d26:src/app/(auth)/login/page.tsx
         signingInHere.current = false;
         setError("Google sign-in failed. Please try again.");
       } finally {

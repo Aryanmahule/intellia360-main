@@ -13,6 +13,7 @@ type NavItem = {
 
 type IconName =
   | "learning"
+  | "adaptive"
   | "courses"
   | "assignments"
   | "quizzes"
@@ -81,6 +82,11 @@ export default function Sidebar() {
       label: "My Learning",
       icon: "learning",
       href: "/student/dashboard",
+    },
+    {
+      label: "Learning Path",
+      icon: "adaptive",
+      href: "/student/adaptive-learning",
     },
     {
       label: "Courses",
@@ -547,6 +553,13 @@ function SidebarIcon({ name }: { name: IconName }) {
         <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z" />
         <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20" />
         <path d="M8 7h8M8 10h6" />
+      </>
+    ),
+    adaptive: (
+      <>
+        <path d="M3 20h18" />
+        <path d="m4 15 4.5-4.5 3.5 3 7-7.5" />
+        <path d="M15 6h4v4" />
       </>
     ),
     courses: (

@@ -20,7 +20,7 @@ interface AITutorResponse {
 }
 
 export default function StickyBottomContainer() {
-  const { activeLessonData, xpPoints, learningGems } = useStudentContext();
+  const { activeLessonData, currentGrade, gradeReady, xpPoints, learningGems } = useStudentContext();
   const searchParams = useSearchParams();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -31,20 +31,19 @@ export default function StickyBottomContainer() {
     activeLessonData?.title || "Your Current Lesson";
 
   const lessonId =
-    (activeLessonData as any)?.lessonId ||
-    (activeLessonData as any)?.id ||
+    activeLessonData?.id ||
     searchParams.get("lessonId") ||
     "";
 
-  const topic =
-    (activeLessonData as any)?.topic ||
-    (activeLessonData as any)?.topicTitle ||
-    "";
+  // The server resolves the lesson's topic and the learner profile itself.
+  const topic = "";
 
-  const grade =
-    (activeLessonData as any)?.grade ||
-    searchParams.get("grade") ||
-    "grade1";
+  // Curriculum topics carry no grade of their own; the student's grade lives on
+  // the context. Reading it from the topic always sent "grade1", so every
+  // student above grade 1 was told their grade was locked. Until the profile has
+  // loaded the grade is only a default, so none is sent and the server uses the
+  // student's stored grade.
+  const grade = gradeReady ? currentGrade : undefined;
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {

@@ -6,10 +6,15 @@ import {
   useMemo,
   useState,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRouteParams } from "@/lib/route-params";
 import "../../quiz/quiz.css";
 import { apiFetch } from "@/lib/api";
+import type {
+  QuizAdaptation,
+  QuizSubmitResult,
+} from "@intellia360/shared/types/api/adaptive-learning";
 
 type QuizOption = {
   id: string;
@@ -20,6 +25,9 @@ type QuizQuestion = {
   id: string;
   question: string;
   options: QuizOption[];
+  /** The question's own hint from the bank, when it has one. */
+  hint?: string;
+  difficulty?: "easy" | "medium" | "hard" | null;
 };
 
 type QuizData = {
@@ -29,6 +37,10 @@ type QuizData = {
   lessonTitle: string;
   durationSeconds: number;
   questions: QuizQuestion[];
+  mode?: "practice" | "adaptive";
+  /** Pins the served questions server-side; makes the submission idempotent. */
+  sessionId?: string | null;
+  adaptation?: QuizAdaptation;
 };
 
 type QuizResponse = {
@@ -37,18 +49,27 @@ type QuizResponse = {
   data?: QuizData;
 };
 
+/** Older API builds return only the first six fields. */
+type SubmitResult = Pick<
+  QuizSubmitResult,
+  "quizId" | "lessonId" | "scorePercent" | "correctAnswers" | "totalQuestions" | "xpEarned"
+> &
+  Partial<Omit<QuizSubmitResult, "quizId" | "lessonId" | "scorePercent" | "correctAnswers" | "totalQuestions" | "xpEarned">>;
+
 type SubmitResponse = {
   success: boolean;
   message?: string;
-  data?: {
-    quizId: string;
-    lessonId: string;
-    scorePercent: number;
-    correctAnswers: number;
-    totalQuestions: number;
-    xpEarned: number;
-  };
+  data?: SubmitResult;
 };
+
+/** Practice ids without a real lesson behind them return to the dashboard instead. */
+const NON_LESSON_IDS = new Set(["adaptive-practice", "mixed-practice"]);
+
+function returnHref(quiz: QuizData): string {
+  return NON_LESSON_IDS.has(quiz.lessonId)
+    ? "/student/dashboard"
+    : `/student/lesson/${encodeURIComponent(quiz.lessonId)}`;
+}
 
 type QuizState = "loading" | "ready" | "submitting" | "completed" | "error";
 
@@ -263,6 +284,12 @@ export default function StudentQuizPage() {
     try {
       setQuizState("loading");
       setErrorMessage("");
+      // A freshly served quiz starts clean, even when navigating between quiz ids.
+      setAnswers({});
+      setCurrentQuestionIndex(0);
+      setHintVisible(false);
+      setHintLevel(0);
+      setResult(null);
 
       const response = await apiFetch(`/api/student/quiz/${quizId}`, {
         method: "GET",
@@ -391,15 +418,17 @@ export default function StudentQuizPage() {
         body: JSON.stringify({
           quizId: quiz.id,
           lessonId: quiz.lessonId,
+          ...(quiz.sessionId ? { sessionId: quiz.sessionId } : {}),
           answers,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Unable to submit quiz.");
-      }
+      const payload = (await response.json().catch(() => null)) as SubmitResponse | null;
 
-      const payload = (await response.json()) as SubmitResponse;
+      if (!response.ok || !payload) {
+        // The server explains expired sessions and invalid answers; show that.
+        throw new Error(payload?.message || "Unable to submit quiz.");
+      }
 
       if (!payload.success || !payload.data) {
         throw new Error(payload.message || "Quiz submission failed.");
@@ -430,7 +459,11 @@ export default function StudentQuizPage() {
     }
 
     if (hintLevel === 1) {
-      return "Read the question carefully and identify the key information you need to solve it.";
+      // The question's own hint first — it points at the method, not the answer.
+      return (
+        currentQuestion.hint ||
+        "Read the question carefully and identify the key information you need to solve it."
+      );
     }
 
     if (hintLevel === 2) {
@@ -446,6 +479,13 @@ export default function StudentQuizPage() {
     setHintVisible(false);
     setHintLevel(0);
     setResult(null);
+
+    // A session can be submitted once; a new attempt needs a freshly served quiz
+    // (for adaptive practice, that also means new questions at the new level).
+    if (quiz?.sessionId) {
+      void loadQuiz();
+      return;
+    }
 
     if (quiz) {
       setTimeLeft(quiz.durationSeconds);
@@ -526,6 +566,12 @@ export default function StudentQuizPage() {
             You completed <strong>{quiz.title}</strong>.
           </p>
 
+          {result.alreadySubmitted && (
+            <p className="result-replayed">
+              This quiz was already submitted — here is your saved result. No extra XP was added.
+            </p>
+          )}
+
           <div className="result-score-ring">
             <div className="result-score-inner">
               <strong>{result.scorePercent}%</strong>
@@ -552,23 +598,88 @@ export default function StudentQuizPage() {
             </div>
           </div>
 
+          {result.review && result.review.some((r) => r.explanation || r.correctOptionId) && (
+            <section className="result-section" aria-labelledby="quiz-review-heading">
+              <h2 id="quiz-review-heading">Review your answers</h2>
+              <ol className="result-list">
+                {result.review.map((item) => {
+                  const question = quiz.questions.find((q) => q.id === item.questionId);
+                  const correctText = question?.options.find((o) => o.id === item.correctOptionId)?.text;
+                  return (
+                    <li
+                      key={item.questionId}
+                      className={`result-review-item ${item.isCorrect ? "is-correct" : "is-wrong"}`}
+                    >
+                      <strong>
+                        {item.isCorrect ? "✓ Correct" : "✗ Not quite"} — {question?.question}
+                      </strong>
+                      {!item.isCorrect && correctText && <>Correct answer: {correctText}. </>}
+                      {item.explanation}
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          )}
+
+          {result.mastery && result.mastery.length > 0 && (
+            <section className="result-section" aria-labelledby="quiz-mastery-heading">
+              <h2 id="quiz-mastery-heading">Topic mastery</h2>
+              <ul className="result-list">
+                {result.mastery.map((m) => (
+                  <li key={m.skill} className="result-mastery-item">
+                    <span>
+                      {m.label} · {m.bandLabel}
+                    </span>
+                    <span>
+                      {m.after === null
+                        ? "Keep practising to measure"
+                        : m.before === null
+                          ? `${m.after}%`
+                          : `${m.before}% → ${m.after}%`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Link href="/student/adaptive-learning" className="result-progress-link">
+                See all your progress →
+              </Link>
+            </section>
+          )}
+
+          {result.nextStep && (
+            <section className="result-section result-next-step" aria-labelledby="quiz-next-heading">
+              <h2 id="quiz-next-heading">Next: {result.nextStep.title}</h2>
+              <p>{result.nextStep.reason}</p>
+              {result.nextStep.actions[0] &&
+                (result.nextStep.actions[0].href === `/student/quiz/${encodeURIComponent(quiz.id)}` ? (
+                  // Same quiz again: a link to the current URL would do nothing.
+                  <button type="button" onClick={restartQuiz}>
+                    {result.nextStep.actions[0].label} →
+                  </button>
+                ) : (
+                  <Link href={result.nextStep.actions[0].href}>
+                    {result.nextStep.actions[0].label} →
+                  </Link>
+                ))}
+            </section>
+          )}
+
           <div className="result-actions">
             <button
               type="button"
               className="quiz-primary-button"
               onClick={restartQuiz}
             >
-              Try Again
+              {quiz.mode === "adaptive" ? "New Questions" : "Try Again"}
             </button>
 
             <button
               type="button"
               className="quiz-secondary-button"
-              onClick={() =>
-                router.push(`/student/lesson/${quiz.lessonId}`)
-              }
+              onClick={() => router.push(returnHref(quiz))}
             >
-              Return to Lesson
+              {NON_LESSON_IDS.has(quiz.lessonId) ? "Back to Dashboard" : "Return to Lesson"}
             </button>
           </div>
         </section>
@@ -587,17 +698,15 @@ export default function StudentQuizPage() {
             <button
               type="button"
               className="quiz-back-button"
-              onClick={() =>
-                router.push(`/student/lesson/${quiz.lessonId}`)
-              }
-              aria-label="Back to lesson"
+              onClick={() => router.push(returnHref(quiz))}
+              aria-label={NON_LESSON_IDS.has(quiz.lessonId) ? "Back to dashboard" : "Back to lesson"}
             >
               <ArrowLeftIcon />
             </button>
 
             <div>
               <span className="quiz-header-label">
-                Practice Challenge
+                {quiz.mode === "adaptive" ? "Smart Practice" : "Practice Challenge"}
               </span>
 
               <h1>{quiz.title}</h1>
@@ -629,6 +738,24 @@ export default function StudentQuizPage() {
           </div>
         </header>
 
+        {quiz.adaptation && (
+          <div className="quiz-adaptation" role="note">
+            <span>
+              <strong>
+                {quiz.adaptation.kind === "diagnostic"
+                  ? "Placement quiz"
+                  : `Focus: ${quiz.adaptation.focusSkillLabel ?? "Mixed topics"}`}
+              </strong>
+              {quiz.adaptation.kind !== "diagnostic" && <> · Level: {quiz.adaptation.targetDifficulty}</>}
+            </span>
+            <span className="quiz-adaptation-note">
+              {quiz.adaptation.reason}
+              {quiz.adaptation.limitedByBank &&
+                " There aren't enough questions at this exact level yet, so the closest ones were used."}
+            </span>
+          </div>
+        )}
+
         <section className="quiz-progress-section">
           <div className="quiz-progress-top">
             <span>
@@ -657,6 +784,10 @@ export default function StudentQuizPage() {
               <span className="question-label">
                 Challenge Question
               </span>
+
+              {currentQuestion?.difficulty && (
+                <span className="question-difficulty">{currentQuestion.difficulty}</span>
+              )}
             </div>
 
             <h2 className="question-title">
